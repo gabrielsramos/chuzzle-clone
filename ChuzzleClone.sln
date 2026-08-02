@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChuzzleClone", "ChuzzleClone.csproj", "{E82A4252-6B87-4483-8E04-61B1132D662F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "mgcore", "..\mgcore\mgcore.csproj", "{F68400FE-A955-4C05-AFAF-B0C07FC3DB52}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E82A4252-6B87-4483-8E04-61B1132D662F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E82A4252-6B87-4483-8E04-61B1132D662F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E82A4252-6B87-4483-8E04-61B1132D662F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E82A4252-6B87-4483-8E04-61B1132D662F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F68400FE-A955-4C05-AFAF-B0C07FC3DB52}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F68400FE-A955-4C05-AFAF-B0C07FC3DB52}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F68400FE-A955-4C05-AFAF-B0C07FC3DB52}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F68400FE-A955-4C05-AFAF-B0C07FC3DB52}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

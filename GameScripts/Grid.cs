@@ -13,22 +13,22 @@ public class Grid
     private Texture2D _circleTexture;
     
     private RenderEntity _root;
-    private RenderEntity[,] _balls;
+    private Ball[,] _balls;
 
     private MouseState _previousMouseState;
     private bool _isMousePressed;
     private bool _pressStartedOnBall;
     private Vector2 _pressedBallCoordinates;
     
-    private const int rows = 3;
-    private const int columns = 3;
+    private const int rows = 6;
+    private const int columns = 6;
     private const int _spacing = 5;
     
     public int Width
     {
         get
         {
-            var diameter = _circleTexture.Width;
+            var diameter = Ball.Width;
 
             return rows * diameter + (rows + 1) * _spacing;
         }
@@ -37,7 +37,7 @@ public class Grid
     public int Height {
         get
         {
-            var diameter = _circleTexture.Width;
+            var diameter = Ball.Width;
 
             return columns * diameter + (columns + 1) * _spacing;
         }
@@ -48,7 +48,7 @@ public class Grid
         _graphicsDevice = graphicsDevice;
         _circleTexture = circleCircleTexture;
         _root = new RenderEntity();
-        _balls = new RenderEntity[rows, columns];
+        _balls = new Ball[rows, columns];
     }
 
     public void Initialize(Vector2 rootPosition)
@@ -61,7 +61,7 @@ public class Grid
         };
         
         var topLeft = new Vector2(-Width / 2.0f, -Height / 2.0f);
-        var circleRadius = _circleTexture.Width / 2;
+        var circleRadius = Ball.Width / 2;
         
         for (int i = 0; i < rows; i++)
         {
@@ -69,19 +69,20 @@ public class Grid
             {
                 var x = topLeft.X + _spacing + circleRadius + (i * (circleRadius * 2 + _spacing));
                 var y = topLeft.Y + _spacing + circleRadius + (j * (circleRadius * 2 + _spacing));
+
+                var ball = new Ball(_circleTexture);
+                ball.Position = new Vector2(x, y);
+                _balls[i, j] = ball;
                 
-                _balls[i, j] = new RenderEntity()
-                {
-                    Texture = _circleTexture,
-                    Position = new Vector2(x, y),
-                };
-                _root.AddChild(_balls[i, j]);
+                _root.AddChild(_balls[i, j].Entity);
             }
         }
     }
 
-    public void UpdatePositions()
+    public void Update(GameTime gameTime)
     {
+        UpdateBalls(gameTime);
+        
         var mouseState = Mouse.GetState();
 
         if (mouseState.LeftButton == ButtonState.Pressed)
@@ -121,9 +122,20 @@ public class Grid
         _previousMouseState = mouseState;
     }
 
+    private void UpdateBalls(GameTime gameTime)
+    {
+        for (int i = 0; i < rows; i++)
+        {
+            for (int j = 0; j < columns; j++)
+            {
+                _balls[i, j].Update(gameTime);
+            }
+        }
+    }
+
     private (bool, Vector2) IsInsideBall(Vector2 point)
     {
-        var radius = _circleTexture.Width / 2f;
+        var radius = Ball.Width / 2f;
         var radiusSquared = radius * radius;
 
         for (int i = 0; i < rows; i++)

@@ -1,10 +1,30 @@
-#----------------------------- Global Properties -----------------------------#
+
+#----------------------------- Global Properties ----------------------------#
+
 /outputDir:bin/$(Platform)
 /intermediateDir:obj/$(Platform)
 /platform:DesktopGL
-/rebuild
+/config:
+/profile:Reach
+/compress:False
 
-#----------------------------------- Content -----------------------------------#
+#-------------------------------- References --------------------------------#
+
+
+#---------------------------------- Content ---------------------------------#
+
+#begin circle-yellow-eyes-movement.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:circle-yellow-eyes-movement.png
+
 #begin circle.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -16,4 +36,4 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:circle.png
-#end circle.png
+

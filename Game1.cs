@@ -34,7 +34,7 @@ public class Game1 : Game
     {
         _renderer = new Renderer(new SpriteBatch(GraphicsDevice));
         
-        _grid = new Grid(GraphicsDevice, Content.Load<Texture2D>("circle"));
+        _grid = new Grid(GraphicsDevice, Content.Load<Texture2D>("circle-yellow-eyes-movement"));
         
         var center = new Vector2(
             GraphicsDevice.Viewport.Width / 2f,
@@ -45,7 +45,7 @@ public class Game1 : Game
 
     protected override void Update(GameTime gameTime)
     {
-        _grid.UpdatePositions();
+        _grid.Update(gameTime);
         
         base.Update(gameTime);
     }

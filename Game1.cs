@@ -32,7 +32,7 @@ public class Game1 : Game
 
     protected override void LoadContent()
     {
-        _renderer = new Renderer(new SpriteBatch(GraphicsDevice));
+        _renderer = new Renderer(GraphicsDevice);
         
         _grid = new Grid(GraphicsDevice, Content.Load<Texture2D>("circle-yellow-eyes-movement"));
         

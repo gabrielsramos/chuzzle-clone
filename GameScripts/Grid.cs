@@ -102,6 +102,8 @@ public class Grid
                     if (Math.Abs(delta.X) > Math.Abs(delta.Y))
                     {
                         direction = delta.X > 0 ? "right" : "left";
+                        MoveBallsHoriontally(_pressedBallCoordinates, delta.X);
+
                     }
                     else
                     {
@@ -131,6 +133,11 @@ public class Grid
                 _balls[i, j].Update(gameTime);
             }
         }
+    }
+
+    private void MoveBallsHoriontally(Vector2 coordinates, float delta)
+    {
+        //TODO go over all balls of that row and update their coordinates accordingly
     }
 
     private (bool, Vector2) IsInsideBall(Vector2 point)

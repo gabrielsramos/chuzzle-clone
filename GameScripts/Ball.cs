@@ -43,6 +43,12 @@ public class Ball
         _entity = new RenderEntity();
         _entity.Texture = spriteSheet;
         _currentFrame = _random.Next(0, _framesAmount);
+        Rectangle? sourceRectangle = new Rectangle(
+            _currentFrame * _frameWidth,
+            0,
+            _frameWidth,
+            _frameHeight);
+        _entity.SourceRectangle = sourceRectangle;
         _frameTime = GetRandomFrameTime();
     }
     

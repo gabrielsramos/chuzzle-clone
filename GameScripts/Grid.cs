@@ -6,6 +6,8 @@ using Microsoft.Xna.Framework.Input;
 
 namespace ChuzzleClone.GameScripts;
 
+
+
 public class Grid
 {
     private GraphicsDevice _graphicsDevice;
@@ -18,7 +20,7 @@ public class Grid
     private MouseState _previousMouseState;
     private bool _isMousePressed;
     private bool _pressStartedOnBall;
-    private Vector2 _pressedBallCoordinates;
+    private Coord _pressedBallCoordinates;
     
     private const int rows = 6;
     private const int columns = 6;
@@ -63,6 +65,7 @@ public class Grid
         var topLeft = new Vector2(-Width / 2.0f, -Height / 2.0f);
         var circleRadius = Ball.Width / 2;
         
+        //TODO this is flipped, it's initializing rows in place of columns
         for (int i = 0; i < rows; i++)
         {
             for (int j = 0; j < columns; j++)
@@ -72,6 +75,7 @@ public class Grid
 
                 var ball = new Ball(_circleTexture);
                 ball.Position = new Vector2(x, y);
+                ball.SetCoords(i, j);
                 _balls[i, j] = ball;
                 
                 _root.AddChild(_balls[i, j].Entity);
@@ -135,15 +139,25 @@ public class Grid
         }
     }
 
-    private void MoveBallsHoriontally(Vector2 coordinates, float delta)
+    private void MoveBallsHoriontally(Coord coordinates, float delta)
     {
         //TODO go over all balls of that row and update their coordinates accordingly
+        var row = coordinates.row;
+
+        for (int j = 0; j < columns; j++)
+        {
+            var ent = _balls[row, j].Entity;
+            var position = ent.Position;
+            position.X += delta;
+            ent.Position = position;
+        }
     }
 
-    private (bool, Vector2) IsInsideBall(Vector2 point)
+    private (bool, Coord) IsInsideBall(Vector2 point)
     {
         var radius = Ball.Width / 2f;
         var radiusSquared = radius * radius;
+        var coord = new Coord();
 
         for (int i = 0; i < rows; i++)
         {
@@ -153,12 +167,14 @@ public class Grid
 
                 if ((point - ballCenter).LengthSquared() <= radiusSquared)
                 {
-                    return (true, new Vector2(i, j));
+                    coord.row = i;
+                    coord.column = j;
+                    return (true, coord);
                 }
             }
         }
 
-        return (false, new Vector2(0, 0));
+        return (false, coord);
     }
     
 

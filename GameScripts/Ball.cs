@@ -4,6 +4,12 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace ChuzzleClone.GameScripts;
 
+public struct Coord
+{
+    public int row;
+    public int column;
+}
+
 public class Ball
 {
     public RenderEntity Entity
@@ -19,6 +25,8 @@ public class Ball
         get { return _entity.Position; }
         set { _entity.Position = value; }
     }
+
+    public Coord GridCoordinates;
     
     public static int Width => _frameWidth;
     public static int Height => _frameHeight;
@@ -50,6 +58,12 @@ public class Ball
             _frameHeight);
         _entity.SourceRectangle = sourceRectangle;
         _frameTime = GetRandomFrameTime();
+    }
+
+    public void SetCoords(int row, int column)
+    {
+        GridCoordinates.row = row;
+        GridCoordinates.column = column;
     }
     
     public void Update(GameTime gameTime)

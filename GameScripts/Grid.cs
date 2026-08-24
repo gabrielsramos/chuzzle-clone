@@ -6,7 +6,10 @@ using Microsoft.Xna.Framework.Input;
 
 namespace ChuzzleClone.GameScripts;
 
-
+public struct GridMetadata
+{
+    publicVector2 _position;
+}
 
 public class Grid
 {
@@ -65,13 +68,12 @@ public class Grid
         var topLeft = new Vector2(-Width / 2.0f, -Height / 2.0f);
         var circleRadius = Ball.Width / 2;
         
-        //TODO this is flipped, it's initializing rows in place of columns
         for (int i = 0; i < rows; i++)
         {
             for (int j = 0; j < columns; j++)
             {
-                var x = topLeft.X + _spacing + circleRadius + (i * (circleRadius * 2 + _spacing));
-                var y = topLeft.Y + _spacing + circleRadius + (j * (circleRadius * 2 + _spacing));
+                var x = topLeft.X + _spacing + circleRadius + (j * (circleRadius * 2 + _spacing));
+                var y = topLeft.Y + _spacing + circleRadius + (i * (circleRadius * 2 + _spacing));
 
                 var ball = new Ball(_circleTexture);
                 ball.Position = new Vector2(x, y);
@@ -112,6 +114,7 @@ public class Grid
                     else
                     {
                         direction = delta.Y > 0 ? "down" : "up";
+                        MoveBallsVertically(_pressedBallCoordinates, delta.Y);
                     }
 
                     Console.WriteLine($"Mouse moving {direction}, diff: X={delta.X:0.##}, Y={delta.Y:0.##}");
@@ -149,6 +152,20 @@ public class Grid
             var ent = _balls[row, j].Entity;
             var position = ent.Position;
             position.X += delta;
+            ent.Position = position;
+        }
+    }
+    
+    private void MoveBallsVertically(Coord coordinates, float delta)
+    {
+        //TODO go over all balls of that row and update their coordinates accordingly
+        var column = coordinates.column;
+
+        for (int i = 0; i < rows; i++)
+        {
+            var ent = _balls[i, column].Entity;
+            var position = ent.Position;
+            position.Y += delta;
             ent.Position = position;
         }
     }

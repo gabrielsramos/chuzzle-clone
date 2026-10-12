@@ -9,6 +9,7 @@ public class Game1 : Game
 {
     private readonly GraphicsDeviceManager _graphics;
     private Renderer _renderer = null!;
+    private readonly RenderScene _scene = new();
     private Grid _grid;
 
     public Game1()
@@ -41,6 +42,7 @@ public class Game1 : Game
             GraphicsDevice.Viewport.Height / 2f);
         
         _grid.Initialize(center);
+        _scene.AddWorld(_grid.GetGrid());
     }
 
     protected override void Update(GameTime gameTime)
@@ -54,10 +56,14 @@ public class Game1 : Game
     {
         GraphicsDevice.Clear(Color.DimGray);
         
-        var gridObject = _grid.GetGrid();
-        
-        _renderer.DrawWorld(new[] { gridObject }, Matrix.Identity);
+        _renderer.DrawScene(_scene);
 
         base.Draw(gameTime);
+    }
+    
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing) _scene.Dispose();
+        base.Dispose(disposing);
     }
 }

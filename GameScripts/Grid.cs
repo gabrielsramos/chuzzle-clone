@@ -8,7 +8,7 @@ namespace ChuzzleClone.GameScripts;
 
 public struct GridMetadata
 {
-    publicVector2 _position;
+    public Vector2 _position;
 }
 
 public class Grid

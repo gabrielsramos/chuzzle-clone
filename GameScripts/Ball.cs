@@ -36,7 +36,6 @@ public class Ball
     private float _timer;
     private int _currentFrame = 0;
     private int _previousFrame = 0;
-    private bool _hasAnimationStarted;
     private Random _random = new Random();
     
     private float _frameTime;
@@ -44,12 +43,16 @@ public class Ball
     private const int _frameWidth = 100;
     private const int _frameHeight = 100;
     private const int _framesAmount = 6;
-    private const float _maxFrameTime = 3.0f;
+    private const float _maxFrameTime = 20.0f;
 
-    public Ball(Texture2D spriteSheet)
+    public Ball(Texture2D spriteSheet, int row, int column)
     {
         _entity = new RenderEntity();
         _entity.Texture = spriteSheet;
+        _entity.Color = new Color(
+            _random.Next(64, 256),
+            _random.Next(64, 256),
+            _random.Next(64, 256));
         _currentFrame = _random.Next(0, _framesAmount);
         Rectangle? sourceRectangle = new Rectangle(
             _currentFrame * _frameWidth,
@@ -58,6 +61,8 @@ public class Ball
             _frameHeight);
         _entity.SourceRectangle = sourceRectangle;
         _frameTime = GetRandomFrameTime();
+        _entity.DebugName = $"ball {row}x{column}";
+        SetCoords(row, column);
     }
 
     public void SetCoords(int row, int column)

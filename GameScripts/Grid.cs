@@ -8,7 +8,7 @@ namespace ChuzzleClone.GameScripts;
 
 public struct GridMetadata
 {
-    public Vector2 _position;
+    public Coord Coordinates;
 }
 
 public class Grid
@@ -19,11 +19,20 @@ public class Grid
     
     private RenderEntity _root;
     private Ball[,] _balls;
+    // Cell occupancy is separate from the stable indices in _balls.
+    private readonly (int Row, int Column)[,] _ballIndicesByCell = new (int, int)[rows, columns];
+    private readonly Dictionary<(int Row, int Column), GridMetadata> _gridMetadata = new();
+
+    public IReadOnlyDictionary<(int Row, int Column), GridMetadata> BallMetadata => _gridMetadata;
 
     private MouseState _previousMouseState;
     private bool _isMousePressed;
     private bool _pressStartedOnBall;
     private Coord _pressedBallCoordinates;
+    private DragAxis _dragAxis;
+    private readonly List<(RenderEntity Source, RenderEntity Before, RenderEntity After)> _wrapCopies = new();
+
+    private enum DragAxis { None, Horizontal, Vertical }
     
     private const int rows = 6;
     private const int columns = 6;
@@ -53,15 +62,19 @@ public class Grid
         _graphicsDevice = graphicsDevice;
         _circleTexture = circleCircleTexture;
         _root = new RenderEntity();
+        _root.DebugName = "Grid";
         _balls = new Ball[rows, columns];
     }
 
     public void Initialize(Vector2 rootPosition)
     {
-        var rect = DrawerHelper.CreateRectangleOutline(_graphicsDevice, Width, Height, 2, Color.Black);
+        ClearWrapCopies();
+        _gridMetadata.Clear();
+        var text = DrawerHelper.CreateRectangleOutline(_graphicsDevice, Width, Height, 2, Color.Black);
         _root = new RenderEntity()
         {
-            Texture = rect,
+            Texture = text,
+            ClipRectangle = new Rectangle(-Width / 2, -Height / 2, Width, Height),
             Position = rootPosition
         };
         
@@ -75,10 +88,14 @@ public class Grid
                 var x = topLeft.X + _spacing + circleRadius + (j * (circleRadius * 2 + _spacing));
                 var y = topLeft.Y + _spacing + circleRadius + (i * (circleRadius * 2 + _spacing));
 
-                var ball = new Ball(_circleTexture);
+                var ball = new Ball(_circleTexture, i, j);
                 ball.Position = new Vector2(x, y);
-                ball.SetCoords(i, j);
                 _balls[i, j] = ball;
+                _ballIndicesByCell[i, j] = (i, j);
+                _gridMetadata[(i, j)] = new GridMetadata
+                {
+                    Coordinates = new Coord { row = i, column = j }
+                };
                 
                 _root.AddChild(_balls[i, j].Entity);
             }
@@ -96,39 +113,31 @@ public class Grid
             if (!_isMousePressed)
             {
                 (_pressStartedOnBall, _pressedBallCoordinates) = IsInsideBall(mouseState.Position.ToVector2());
+                _dragAxis = DragAxis.None;
             }
             else if (_pressStartedOnBall)
             {
-                var delta = mouseState.Position.ToVector2() - _previousMouseState.Position.ToVector2();
-
-                if (delta.LengthSquared() > 0)
-                {
-                    string direction;
-
-                    if (Math.Abs(delta.X) > Math.Abs(delta.Y))
-                    {
-                        direction = delta.X > 0 ? "right" : "left";
-                        MoveBallsHoriontally(_pressedBallCoordinates, delta.X);
-
-                    }
-                    else
-                    {
-                        direction = delta.Y > 0 ? "down" : "up";
-                        MoveBallsVertically(_pressedBallCoordinates, delta.Y);
-                    }
-
-                    Console.WriteLine($"Mouse moving {direction}, diff: X={delta.X:0.##}, Y={delta.Y:0.##}");
-                }
+                DragBalls(mouseState);
             }
 
             _isMousePressed = true;
         }
         else
         {
+            if (_isMousePressed && _pressStartedOnBall)
+            {
+                // Include any movement since the last pressed frame.
+                DragBalls(mouseState);
+                SnapDraggedLine();
+            }
+
             _isMousePressed = false;
+            _pressStartedOnBall = false;
+            _dragAxis = DragAxis.None;
         }
 
         _previousMouseState = mouseState;
+        UpdateWrapCopies();
     }
 
     private void UpdateBalls(GameTime gameTime)
@@ -142,14 +151,156 @@ public class Grid
         }
     }
 
+    private void DragBalls(MouseState mouseState)
+    {
+        var delta = mouseState.Position.ToVector2() - _previousMouseState.Position.ToVector2();
+        if (delta.LengthSquared() == 0)
+            return;
+
+        if (_dragAxis == DragAxis.None)
+        {
+            _dragAxis = Math.Abs(delta.X) > Math.Abs(delta.Y) ? DragAxis.Horizontal : DragAxis.Vertical;
+            CreateWrapCopies();
+        }
+
+        if (_dragAxis == DragAxis.Horizontal)
+        {
+            MoveBallsHoriontally(_pressedBallCoordinates, delta.X);
+        }
+        else
+        {
+            MoveBallsVertically(_pressedBallCoordinates, delta.Y);
+        }
+    }
+
+    private void SnapDraggedLine()
+    {
+        if (_dragAxis == DragAxis.None)
+            return;
+
+        var horizontal = _dragAxis == DragAxis.Horizontal;
+        var count = horizontal ? columns : rows;
+        var cellSize = (horizontal ? Ball.Width : Ball.Height) + _spacing;
+        // Use the first cell's occupant as the anchor for the whole line.
+        // Its current position determines the nearest cell, even if movement
+        // was applied outside DragBalls.
+        var anchorIndex = horizontal
+            ? _ballIndicesByCell[_pressedBallCoordinates.row, 0]
+            : _ballIndicesByCell[0, _pressedBallCoordinates.column];
+        var anchorPosition = _balls[anchorIndex.Row, anchorIndex.Column].Position;
+        var origin = GetCellPosition(0, 0);
+        var offset = horizontal ? anchorPosition.X - origin.X : anchorPosition.Y - origin.Y;
+        var shift = (int)MathF.Round(offset / cellSize, MidpointRounding.AwayFromZero);
+        var line = new (int Row, int Column)[count];
+
+        // Snapshot only this line so rotating its occupants cannot overwrite them.
+        for (int i = 0; i < count; i++)
+            line[i] = horizontal
+                ? _ballIndicesByCell[_pressedBallCoordinates.row, i]
+                : _ballIndicesByCell[i, _pressedBallCoordinates.column];
+
+        for (int i = 0; i < count; i++)
+        {
+            var destination = ((i + shift) % count + count) % count;
+            var row = horizontal ? _pressedBallCoordinates.row : destination;
+            var column = horizontal ? destination : _pressedBallCoordinates.column;
+            var index = line[i];
+            var ball = _balls[index.Row, index.Column];
+            ball.Position = GetCellPosition(row, column);
+            _ballIndicesByCell[row, column] = index;
+
+            var coordinates = _gridMetadata[index].Coordinates;
+            if (coordinates.row != row || coordinates.column != column)
+            {
+                _gridMetadata[index] = new GridMetadata
+                {
+                    Coordinates = new Coord { row = row, column = column }
+                };
+                ball.SetCoords(row, column);
+            }
+        }
+
+        ClearWrapCopies();
+    }
+
+    private void CreateWrapCopies()
+    {
+        var horizontal = _dragAxis == DragAxis.Horizontal;
+        var count = horizontal ? columns : rows;
+        for (int i = 0; i < count; i++)
+        {
+            var index = horizontal
+                ? _ballIndicesByCell[_pressedBallCoordinates.row, i]
+                : _ballIndicesByCell[i, _pressedBallCoordinates.column];
+            var source = _balls[index.Row, index.Column].Entity;
+            var before = new RenderEntity { DebugName = "Wrap copy before" };
+            var after = new RenderEntity { DebugName = "Wrap copy after" };
+            _root.AddChild(before);
+            _root.AddChild(after);
+            _wrapCopies.Add((source, before, after));
+        }
+    }
+
+    private void UpdateWrapCopies()
+    {
+        var offset = _dragAxis == DragAxis.Horizontal
+            ? new Vector2(columns * (Ball.Width + _spacing), 0)
+            : new Vector2(0, rows * (Ball.Height + _spacing));
+
+        foreach (var (source, before, after) in _wrapCopies)
+        {
+            SynchronizeWrapCopy(source, before, source.Position - offset);
+            SynchronizeWrapCopy(source, after, source.Position + offset);
+        }
+    }
+
+    private static void SynchronizeWrapCopy(RenderEntity source, RenderEntity copy, Vector2 position)
+    {
+        copy.Position = position;
+        copy.Texture = source.Texture;
+        copy.SourceRectangle = source.SourceRectangle;
+        copy.Color = source.Color;
+        copy.Origin = source.Origin;
+        copy.Effects = source.Effects;
+        copy.LayerDepth = source.LayerDepth;
+    }
+
+    private void ClearWrapCopies()
+    {
+        foreach (var (_, before, after) in _wrapCopies)
+        {
+            _root.RemoveChild(before);
+            _root.RemoveChild(after);
+        }
+        _wrapCopies.Clear();
+    }
+
+    private static float GetWrappedDelta(float anchorOffset, float delta, float cycle)
+    {
+        // Translate the entire line by the same amount, discarding full cycles.
+        // The originals and copies one cycle away then cover arbitrarily long drags.
+        return (anchorOffset + delta) % cycle - anchorOffset;
+    }
+
+    private Vector2 GetCellPosition(int row, int column)
+    {
+        return new Vector2(
+            -Width / 2f + _spacing + Ball.Width / 2f + column * (Ball.Width + _spacing),
+            -Height / 2f + _spacing + Ball.Height / 2f + row * (Ball.Height + _spacing));
+    }
+
     private void MoveBallsHoriontally(Coord coordinates, float delta)
     {
-        //TODO go over all balls of that row and update their coordinates accordingly
         var row = coordinates.row;
+        var anchor = _ballIndicesByCell[row, 0];
+        delta = GetWrappedDelta(
+            _balls[anchor.Row, anchor.Column].Position.X - GetCellPosition(row, 0).X,
+            delta, columns * (Ball.Width + _spacing));
 
         for (int j = 0; j < columns; j++)
         {
-            var ent = _balls[row, j].Entity;
+            var index = _ballIndicesByCell[row, j];
+            var ent = _balls[index.Row, index.Column].Entity;
             var position = ent.Position;
             position.X += delta;
             ent.Position = position;
@@ -158,12 +309,16 @@ public class Grid
     
     private void MoveBallsVertically(Coord coordinates, float delta)
     {
-        //TODO go over all balls of that row and update their coordinates accordingly
         var column = coordinates.column;
+        var anchor = _ballIndicesByCell[0, column];
+        delta = GetWrappedDelta(
+            _balls[anchor.Row, anchor.Column].Position.Y - GetCellPosition(0, column).Y,
+            delta, rows * (Ball.Height + _spacing));
 
         for (int i = 0; i < rows; i++)
         {
-            var ent = _balls[i, column].Entity;
+            var index = _ballIndicesByCell[i, column];
+            var ent = _balls[index.Row, index.Column].Entity;
             var position = ent.Position;
             position.Y += delta;
             ent.Position = position;
@@ -184,8 +339,7 @@ public class Grid
 
                 if ((point - ballCenter).LengthSquared() <= radiusSquared)
                 {
-                    coord.row = i;
-                    coord.column = j;
+                    coord = _gridMetadata[(i, j)].Coordinates;
                     return (true, coord);
                 }
             }

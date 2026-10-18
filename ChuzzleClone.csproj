@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
@@ -7,6 +7,11 @@
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
+    <!-- Match mgcore: Debug builds include game debug windows. -->
+    <!-- Editor-only sources follow the same compilation gate as mgcore inspection. -->
+    <ItemGroup Condition="'$(Configuration)' != 'Debug'">
+        <Compile Remove="**/*.editor.cs" />
+    </ItemGroup>
     <ItemGroup>
       <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.5" />
       <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.4.1" />
@@ -21,3 +26,7 @@
     </ItemGroup>
 
 </Project>
+
+
+
+

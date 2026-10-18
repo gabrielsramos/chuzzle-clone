@@ -1,4 +1,5 @@
 using ChuzzleClone;
+using mgcore;
 
 using var game = new Game1();
-game.Run();
+GameHost.Run(game);

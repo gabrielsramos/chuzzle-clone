@@ -1,4 +1,4 @@
-using ChuzzleClone.GameScripts;
+using ChuzzleClone.GameScripts.Scenes;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using mgcore.Rendering;
@@ -10,7 +10,11 @@ public class Game1 : Game
     private readonly GraphicsDeviceManager _graphics;
     private Renderer _renderer = null!;
     private readonly RenderScene _scene = new();
-    private Grid _grid;
+    private GameplayScene _gameplayScene = null!;
+    public AnimationScene AnimationScene { get; private set; } = null!;
+    public SceneKind CurrentScene { get; private set; } = SceneKind.Gameplay;
+    private IGameScene ActiveScene => CurrentScene == SceneKind.Gameplay
+        ? _gameplayScene : AnimationScene;
 
     public Game1()
     {
@@ -35,19 +39,57 @@ public class Game1 : Game
     {
         _renderer = new Renderer(GraphicsDevice);
         
-        _grid = new Grid(GraphicsDevice, Content.Load<Texture2D>("circle-yellow-eyes-movement"));
+        var spriteSheet = Content.Load<Texture2D>("circle-yellow-eyes-movement");
+        // Read back once during loading, before any explosions can be requested.
+        ChuzzleClone.GameScripts.SpritePixelCache.Get(spriteSheet);
         
         var center = new Vector2(
             GraphicsDevice.Viewport.Width / 2f,
             GraphicsDevice.Viewport.Height / 2f);
         
-        _grid.Initialize(center);
-        _scene.AddWorld(_grid.GetGrid());
+        _gameplayScene = new GameplayScene(GraphicsDevice, spriteSheet, center);
+        AnimationScene = new AnimationScene(spriteSheet, center);
+        _scene.AddWorld(ActiveScene.Root);
+    }
+
+    public void ExplodeAllBalls()
+    {
+        SwitchScene(SceneKind.Gameplay);
+        _gameplayScene.ExplodeAllBalls();
+    }
+
+    public void ExplodeMiddleRow()
+    {
+        SwitchScene(SceneKind.Gameplay);
+        _gameplayScene.ExplodeMiddleRow();
+    }
+
+    public void ExplodeMiddleColumn()
+    {
+        SwitchScene(SceneKind.Gameplay);
+        _gameplayScene.ExplodeMiddleColumn();
+    }
+
+    public void ResetGrid()
+    {
+        SwitchScene(SceneKind.Gameplay);
+        _gameplayScene.ResetGrid();
+    }
+
+    public void SwitchScene(SceneKind scene)
+    {
+        if (!Enum.IsDefined(scene)) throw new ArgumentOutOfRangeException(nameof(scene));
+        if (CurrentScene == scene) return;
+        CurrentScene = scene;
+        // Keep one inspection host and publish only the active scene's entities.
+        _scene.Clear();
+        _scene.AddWorld(ActiveScene.Root);
+        Console.WriteLine($"[Scenes] Active scene: {scene}");
     }
 
     protected override void Update(GameTime gameTime)
     {
-        _grid.Update(gameTime);
+        ActiveScene.Update(gameTime);
         
         base.Update(gameTime);
     }
@@ -63,7 +105,12 @@ public class Game1 : Game
     
     protected override void Dispose(bool disposing)
     {
-        if (disposing) _scene.Dispose();
+        if (disposing)
+        {
+            _scene.Dispose();
+            _gameplayScene?.Dispose();
+            AnimationScene?.Dispose();
+        }
         base.Dispose(disposing);
     }
 }

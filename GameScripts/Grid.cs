@@ -19,6 +19,9 @@ public class Grid
     
     private RenderEntity _root;
     private Ball[,] _balls;
+    private bool _logParticlePreparation;
+    private long _particlePreparationStarted;
+    private readonly List<Ball> _preparationTargets = new();
     // Cell occupancy is separate from the stable indices in _balls.
     private readonly (int Row, int Column)[,] _ballIndicesByCell = new (int, int)[rows, columns];
     private readonly Dictionary<(int Row, int Column), GridMetadata> _gridMetadata = new();
@@ -102,6 +105,65 @@ public class Grid
         }
     }
 
+    public void ExplodeAllBalls() => ExplodeBalls(_balls.Cast<Ball>());
+
+    public void ExplodeMiddleRow() => ExplodeBalls(Enumerable.Range(0, columns).Select(column =>
+    {
+        var index = _ballIndicesByCell[rows / 2, column];
+        return _balls[index.Row, index.Column];
+    }));
+
+    public void ExplodeMiddleColumn() => ExplodeBalls(Enumerable.Range(0, rows).Select(row =>
+    {
+        var index = _ballIndicesByCell[row, columns / 2];
+        return _balls[index.Row, index.Column];
+    }));
+
+    private void ExplodeBalls(IEnumerable<Ball> balls)
+    {
+        // Finish an active drag before resolving current cell occupants.
+        SnapDraggedLine();
+        _particlePreparationStarted = System.Diagnostics.Stopwatch.GetTimestamp();
+        _logParticlePreparation = true;
+        // Remove wrap sprites so an in-progress drag cannot leave intact copies visible.
+        ClearWrapCopies();
+        _pressStartedOnBall = false;
+        _dragAxis = DragAxis.None;
+        _preparationTargets.Clear();
+        _preparationTargets.AddRange(balls);
+        foreach (var ball in _preparationTargets)
+            ball.StartAnimation(BallAnimations.Exploding);
+    }
+
+    public void Reset()
+    {
+        ClearWrapCopies();
+        _isMousePressed = false;
+        _pressStartedOnBall = false;
+        _pressedBallCoordinates = default;
+        _previousMouseState = default;
+        _dragAxis = DragAxis.None;
+        _logParticlePreparation = false;
+        _preparationTargets.Clear();
+        _gridMetadata.Clear();
+
+        for (var row = 0; row < rows; row++)
+        {
+            for (var column = 0; column < columns; column++)
+            {
+                var ball = _balls[row, column];
+                ball.StartAnimation(BallAnimations.Idle);
+                ball.Position = GetCellPosition(row, column);
+                ball.SetCoords(row, column);
+                _ballIndicesByCell[row, column] = (row, column);
+                _gridMetadata[(row, column)] = new GridMetadata
+                {
+                    Coordinates = new Coord { row = row, column = column }
+                };
+            }
+        }
+    }
+
     public void Update(GameTime gameTime)
     {
         UpdateBalls(gameTime);
@@ -142,12 +204,32 @@ public class Grid
 
     private void UpdateBalls(GameTime gameTime)
     {
+        var stillPreparing = false;
+        double preparationTotal = 0, preparationMax = 0, attachmentTotal = 0;
         for (int i = 0; i < rows; i++)
         {
             for (int j = 0; j < columns; j++)
             {
                 _balls[i, j].Update(gameTime);
             }
+        }
+        if (_logParticlePreparation)
+        {
+            foreach (var ball in _preparationTargets)
+            {
+                stillPreparing |= ball.CurrentExplosionPhase == ExplosionPhase.CreateParticles;
+                preparationTotal += ball.ParticlePreparationMilliseconds;
+                preparationMax = Math.Max(preparationMax, ball.ParticlePreparationMilliseconds);
+                attachmentTotal += ball.ParticleAttachmentMilliseconds;
+            }
+        }
+        if (_logParticlePreparation && !stillPreparing)
+        {
+            _logParticlePreparation = false;
+            var elapsed = System.Diagnostics.Stopwatch.GetElapsedTime(_particlePreparationStarted).TotalMilliseconds;
+            Console.WriteLine($"[Particles] Grid preparation finished in {elapsed:0.##} ms wall time; " +
+                $"worker time total {preparationTotal:0.##} ms, slowest ball {preparationMax:0.##} ms; " +
+                $"game-thread attachment total {attachmentTotal:0.##} ms.");
         }
     }
 

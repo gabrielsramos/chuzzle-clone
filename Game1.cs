@@ -1,3 +1,4 @@
+using ChuzzleClone.GameScripts;
 using ChuzzleClone.GameScripts.Scenes;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -39,16 +40,24 @@ public class Game1 : Game
     {
         _renderer = new Renderer(GraphicsDevice);
         
-        var spriteSheet = Content.Load<Texture2D>("circle-yellow-eyes-movement");
-        // Read back once during loading, before any explosions can be requested.
-        ChuzzleClone.GameScripts.SpritePixelCache.Get(spriteSheet);
+        (BallColor Color, Texture2D Texture)[] ballTextures =
+        [
+            (BallColor.Green, Content.Load<Texture2D>("balls/green")),
+            (BallColor.Blue, Content.Load<Texture2D>("balls/blue")),
+            (BallColor.Purple, Content.Load<Texture2D>("balls/purple")),
+            (BallColor.Red, Content.Load<Texture2D>("balls/red")),
+            (BallColor.Yellow, Content.Load<Texture2D>("balls/yellow"))
+        ];
+        // Read back each sheet once during loading, before any explosions can be requested.
+        foreach (var sprite in ballTextures)
+            SpritePixelCache.Get(sprite.Texture);
         
         var center = new Vector2(
             GraphicsDevice.Viewport.Width / 2f,
             GraphicsDevice.Viewport.Height / 2f);
         
-        _gameplayScene = new GameplayScene(GraphicsDevice, spriteSheet, center);
-        AnimationScene = new AnimationScene(spriteSheet, center);
+        _gameplayScene = new GameplayScene(GraphicsDevice, ballTextures, center);
+        AnimationScene = new AnimationScene(ballTextures[4].Texture, center);
         _scene.AddWorld(ActiveScene.Root);
     }
 

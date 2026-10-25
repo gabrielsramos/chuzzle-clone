@@ -13,6 +13,8 @@ public struct Coord
 
 public enum BallAnimations { Idle, Exploding }
 
+public enum BallColor { Green, Blue, Purple, Red, Yellow }
+
 public enum ExplosionPhase
 {
     CreateParticles,
@@ -20,8 +22,10 @@ public enum ExplosionPhase
     Disappear
 }
 
-public class Ball
+public class Ball : IDisposable
 {
+    public BallColor BallColor { get; }
+
     public BallAnimations? CurrentAnimation { get; private set; }
     public ExplosionPhase? CurrentExplosionPhase { get; private set; }
 
@@ -109,16 +113,14 @@ public class Ball
     private const float _maxFrameTime = 20.0f;
     private const int _particleSize = 10;
 
-    public Ball(Texture2D spriteSheet, int row, int column)
+    public Ball(Texture2D spriteSheet, BallColor color, int row, int column)
     {
+        BallColor = color;
         _spriteSheet = spriteSheet;
         _spritePixels = SpritePixelCache.Get(spriteSheet);
         _entity = new RenderEntity();
         _entity.Texture = spriteSheet;
-        _entity.Color = new Color(
-            _random.Next(64, 256),
-            _random.Next(64, 256),
-            _random.Next(64, 256));
+        _entity.Color = Color.White;
         _currentFrame = _random.Next(0, _framesAmount);
         _previousFrame = _currentFrame;
         Rectangle? sourceRectangle = new Rectangle(
@@ -186,6 +188,14 @@ public class Ball
         _onAnimationCompleted = null;
         _timer = 0;
         _disperseElapsed = 0;
+    }
+
+    public void Dispose()
+    {
+        StopAnimation();
+        RemoveParticles();
+        _entity.Parent?.RemoveChild(_entity);
+        _entity.Texture = null;
     }
 
     private void UpdateExploding(GameTime gameTime)

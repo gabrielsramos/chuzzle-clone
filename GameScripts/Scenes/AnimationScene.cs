@@ -59,7 +59,7 @@ public sealed class AnimationScene : IGameScene
     public AnimationScene(Texture2D spriteSheet, Vector2 center)
     {
         FrameCount = spriteSheet.Width / Ball.Width;
-        _ball = new Ball(spriteSheet, 0, 0);
+        _ball = new Ball(spriteSheet, BallColor.Yellow, 0, 0);
         _ball.Entity.DebugName = "Preview ball";
         _ball.Entity.Color = Color.White;
         Root.Position = center;
